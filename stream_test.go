@@ -1,4 +1,4 @@
-package stream
+package rpc_stream
 
 import (
 	"io"
@@ -22,13 +22,15 @@ func TestAdd(t *testing.T) {
 
 	var p = &Sproto{name: "New", serv: bogus}
 	assert.Nil(t, Add(Mux_v1, p))
-	assert.Equal(t, 2, p.stype)
-	assert.Equal(t, ErrAlreadyExists, Add(Mux_v1, p))
-	assert.Equal(t, 2, p.stype)
+	assert.Equal(t, 4, p.stype)
+
+	// should replace not add.
+	assert.Nil(t, Add(Mux_v1, p))
+	assert.Equal(t, 4, p.stype)
 
 	var y = &Sproto{name: "mess", serv: bogus}
 	assert.Nil(t, Add(Mux_v1, y))
-	assert.Equal(t, 3, y.stype)
+	assert.Equal(t, 5, y.stype)
 }
 
 var serv_called bool

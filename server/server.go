@@ -1,4 +1,4 @@
-package server
+package rpc_server
 
 import (
 	"crypto/tls"
@@ -7,6 +7,7 @@ import (
 	"net"
 	netrpc "net/rpc"
 	"sync"
+
 	"github.com/stackengine/selog"
 	"github.com/stackengine/serpc"
 	"github.com/stackengine/ssltls"
@@ -124,8 +125,8 @@ func (impl *RPCImpl) process() {
 			conn.Close()
 		}
 
-		switch stream.MuxVersion(sVers[0]) {
-		case stream.Mux_v1:
+		switch rpc_stream.MuxVersion(sVers[0]) {
+		case rpc_stream.Mux_v1:
 			go impl.Mux_v1_RPC(conn, false)
 		default:
 			sLog.ErrPrintf("Unknown MUX Version: %v (%s)",
@@ -163,15 +164,15 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 		return
 	}
 
-	if !isTLS && impl.inboundTLS != nil && stream.SType(sType[0]) != stream.RpcTLS {
+	if !isTLS && impl.inboundTLS != nil && rpc_stream.SType(sType[0]) != rpc_stream.RpcTLS {
 		sLog.Printf("Non-TLS connection attempted from %s", conn.RemoteAddr())
 		conn.Close()
 		return
 	}
 
-	s := stream.SType(sType[0])
+	s := rpc_stream.SType(sType[0])
 	switch s {
-	case stream.RpcTLS:
+	case rpc_stream.RpcTLS:
 		if impl.inboundTLS == nil {
 			sLog.ErrPrintf("TLS connection attempted, server not configured for TLS (%s)",
 				conn.RemoteAddr())
@@ -181,7 +182,7 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 		conn = tls.Server(conn, impl.inboundTLS)
 		impl.Mux_v1_RPC(conn, true)
 
-	case stream.Registered:
+	case rpc_stream.Registered:
 		go impl.serviceRPC(conn)
 
 	default:

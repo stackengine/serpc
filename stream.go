@@ -1,4 +1,4 @@
-package stream
+package rpc_stream
 
 import (
 	"errors"
@@ -40,12 +40,16 @@ type SType uint8
 const (
 	UnknownStream SType = iota
 	RpcTLS
+	Raft
+	Mesh
 	Registered
 )
 
 var sTypeName = map[SType]string{
 	UnknownStream: "unknown",
 	RpcTLS:        "RpcTLS",
+	Raft:          "Raft",
+	Mesh:          "Mesh",
 	Registered:    "Registered",
 }
 
@@ -65,7 +69,7 @@ var (
 
 func init() {
 	SprotoSw[Mux_v1] = make(map[SType]*Sproto)
-	st_indx[Mux_v1] = 2
+	st_indx[Mux_v1] = 4
 }
 
 type Sproto struct {
@@ -75,6 +79,7 @@ type Sproto struct {
 }
 
 // add a new stream type to the 'proto-switch'
+// or override default handlers.
 func Add(ver MuxVersion, proto *Sproto) error {
 	// validate that proto is saneish
 	if proto == nil {
@@ -89,6 +94,7 @@ func Add(ver MuxVersion, proto *Sproto) error {
 		return ErrMissingName
 	}
 
+	// these are hard coded and can not be overridden
 	if proto.name == sTypeName[RpcTLS] ||
 		proto.name == sTypeName[Registered] {
 		return ErrAlreadyExists
@@ -97,17 +103,18 @@ func Add(ver MuxVersion, proto *Sproto) error {
 	proto_lck.Lock()
 	defer proto_lck.Unlock()
 
-	// don't over write existing entries
 	ver_proto := SprotoSw[ver]
-	for _, p := range ver_proto {
+
+	for i, p := range ver_proto {
+		// if we find it replace it
 		if p.name == proto.name {
-			return ErrAlreadyExists
+			ver_proto[i] = proto
+			return nil
 		}
 	}
-
+	// else add it
 	proto.stype = st_indx[ver]
 	st_indx[ver]++
 	ver_proto[proto.stype] = proto
-
 	return nil
 }

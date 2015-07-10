@@ -1,4 +1,4 @@
-package client
+package rpc_client
 
 import (
 	"crypto/tls"
@@ -30,7 +30,7 @@ type Conn struct {
 	refCount int32
 	rpc_clnt *netrpc.Client
 	shutdown int32
-	st       stream.SType
+	st       rpc_stream.SType
 	version  int
 }
 
@@ -41,7 +41,7 @@ func (c *Conn) String() string {
 
 func NewConn(mh *codec.MsgpackHandle,
 	addr net.Addr,
-	st stream.SType,
+	st rpc_stream.SType,
 	key string,
 	timo time.Duration,
 	tlsConfig *tls.Config) (*Conn, error) {
@@ -59,7 +59,7 @@ func NewConn(mh *codec.MsgpackHandle,
 	}
 
 	// write stream mux version byte
-	if _, err := conn.Write([]byte{byte(stream.Mux_v1)}); err != nil {
+	if _, err := conn.Write([]byte{byte(rpc_stream.Mux_v1)}); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func NewConn(mh *codec.MsgpackHandle,
 	// Check if TLS is enabled
 	if tlsConfig != nil {
 		// Switch the connection into TLS mode
-		if _, err := conn.Write([]byte{byte(stream.RpcTLS)}); err != nil {
+		if _, err := conn.Write([]byte{byte(rpc_stream.RpcTLS)}); err != nil {
 			conn.Close()
 			return nil, err
 		}

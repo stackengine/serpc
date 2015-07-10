@@ -1,4 +1,4 @@
-package client
+package rpc_client
 
 import "errors"
 

@@ -1,4 +1,4 @@
-package server
+package rpc_server
 
 import "github.com/stackengine/ssltls"
 

@@ -1,10 +1,11 @@
-package client
+package rpc_client
 
 import (
 	"crypto/tls"
 	"net"
 	"sync"
 	"time"
+
 	"github.com/stackengine/serpc"
 	"github.com/ugorji/go/codec"
 )
@@ -123,7 +124,7 @@ func (p *ConnPool) Close() {
 }
 
 // get a cached connection or create and add to pool
-func (p *ConnPool) getClnt(addr net.Addr, st stream.SType) (*Conn, error) {
+func (p *ConnPool) getClnt(addr net.Addr, st rpc_stream.SType) (*Conn, error) {
 	var (
 		c   *Conn
 		err error
@@ -141,7 +142,7 @@ func (p *ConnPool) getClnt(addr net.Addr, st stream.SType) (*Conn, error) {
 }
 
 // RPC is used to make an RPC call to a remote host
-func (p *ConnPool) RPC(addr net.Addr, st stream.SType, version int,
+func (p *ConnPool) RPC(addr net.Addr, st rpc_stream.SType, version int,
 	method string, args interface{}, reply interface{}) error {
 
 	if reply == nil {

@@ -1,4 +1,4 @@
-package server
+package rpc_server
 
 import (
 	"net"
@@ -48,25 +48,25 @@ func TestMore(t *testing.T) {
 	dest, err := net.ResolveTCPAddr("tcp", "127.0.0.1:1999")
 	assert.Nil(t, err)
 
-	pool := client.NewPool(nil, 60*time.Second, 30*time.Second, nil)
-	assert.Equal(t, pool.RPC(dest, stream.Registered, 1, "mock.ServMock", nil, nil), client.ErrNeedReply)
+	pool := rpc_client.NewPool(nil, 60*time.Second, 30*time.Second, nil)
+	assert.Equal(t, pool.RPC(dest, rpc_stream.Registered, 1, "mock.ServMock", nil, nil), rpc_client.ErrNeedReply)
 	var (
 		out int
 		in  = 42
 	)
 
 	// a bogus stream should fail
-	assert.Equal(t, pool.RPC(dest, 3, 1, "mock.ServMock", in, &out), client.ErrCallFailed)
+	assert.Equal(t, pool.RPC(dest, 3, 1, "mock.ServMock", in, &out), rpc_client.ErrCallFailed)
 
-	assert.Nil(t, pool.RPC(dest, stream.Registered, 1, "mock.ServMock", in, &out))
+	assert.Nil(t, pool.RPC(dest, rpc_stream.Registered, 1, "mock.ServMock", in, &out))
 	assert.Equal(t, in, out)
 
 	in *= in
-	assert.Nil(t, pool.RPC(dest, stream.Registered, 1, "fock.ServMock", in, &out))
+	assert.Nil(t, pool.RPC(dest, rpc_stream.Registered, 1, "fock.ServMock", in, &out))
 	assert.Equal(t, in, out)
 
 	in *= in
-	assert.Nil(t, pool.RPC(dest, stream.Registered, 1, "fock.ServMock", in, &out))
+	assert.Nil(t, pool.RPC(dest, rpc_stream.Registered, 1, "fock.ServMock", in, &out))
 	assert.Equal(t, in, out)
 
 	impl.Shutdown()

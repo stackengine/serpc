@@ -189,9 +189,13 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 		go impl.serviceRPC(conn)
 
 	default:
-		sLog.ErrPrintf("Invalid stream type 'unknown' (%d) (%s)",
-			s, conn.RemoteAddr())
-		conn.Close()
+		serv, err := rpc_stream.Lookup(rpc_stream.Mux_v1, s)
+		if err != nil {
+			sLog.ErrPrintf("Error on stream (%d) (%s) - %s", s, conn.RemoteAddr(), err)
+			conn.Close()
+			return
+		}
+		go serv(conn)
 	}
 }
 

@@ -50,6 +50,7 @@ func Register(name string, obj interface{}) error {
 	}
 
 	registered[name] = obj
+	sLog.Printf("Register: end-point %#v as %s", obj, name)
 	return nil
 }
 
@@ -89,6 +90,8 @@ func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, port int) error {
 		impl.rpc_svr = nil
 		return err
 	}
+
+	sLog.Printf("Init: NewServer using port: %d %#v", port, impl)
 	return nil
 }
 

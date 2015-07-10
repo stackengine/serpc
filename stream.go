@@ -2,7 +2,7 @@ package rpc_stream
 
 import (
 	"errors"
-	"io"
+	"net"
 	"sync"
 )
 
@@ -75,7 +75,17 @@ func init() {
 type Sproto struct {
 	stype SType
 	name  string
-	serv  func(conn io.ReadWriteCloser) error
+	serv  func(conn net.Conn) error
+}
+
+func NewProto(name string, serv func(net.Conn) error) (*Sproto, error) {
+	if len(name) < 1 {
+		return nil, ErrMissingName
+	}
+	if serv == nil {
+		return nil, ErrMissingServFunc
+	}
+	return &Sproto{name: name, serv: serv}, nil
 }
 
 // add a new stream type to the 'proto-switch'

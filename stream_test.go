@@ -2,22 +2,23 @@ package rpc_stream
 
 import (
 	"io"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func bogus(conn io.ReadWriteCloser) error {
+func bogus(conn net.Conn) error {
 	return nil
 }
 
 func TestAdd(t *testing.T) {
+	var err error
+
+	// test Add
 	assert.Equal(t, ErrNoProto, Add(Mux_v1, nil))
-
 	assert.Equal(t, ErrMissingServFunc, Add(Mux_v1, &Sproto{}))
-
 	assert.Equal(t, ErrMissingName, Add(Mux_v1, &Sproto{serv: bogus}))
-
 	assert.Equal(t, ErrAlreadyExists, Add(Mux_v1, &Sproto{name: "Registered", serv: bogus}))
 
 	var p = &Sproto{name: "New", serv: bogus}
@@ -31,6 +32,13 @@ func TestAdd(t *testing.T) {
 	var y = &Sproto{name: "mess", serv: bogus}
 	assert.Nil(t, Add(Mux_v1, y))
 	assert.Equal(t, 5, y.stype)
+
+	// test NewProto
+	_, err = NewProto("foo", nil)
+	assert.Equal(t, ErrMissingServFunc, err)
+	_, err = NewProto("", bogus)
+	assert.Equal(t, ErrMissingName, err)
+
 }
 
 var serv_called bool

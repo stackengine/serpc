@@ -68,6 +68,10 @@ func NewServer() *RPCImpl {
 	return &RPCImpl{}
 }
 
+func (impl *RPCImpl) Server() *netrpc.Server {
+	return impl.rpc_svr
+}
+
 func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, port int) error {
 	var err error
 

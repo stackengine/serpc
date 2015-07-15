@@ -79,6 +79,7 @@ func NewPool(mh *codec.MsgpackHandle,
 	if maxTime > 0 {
 		go pool.reap()
 	}
+	sLog.Printf("NewPool: %p", pool)
 	return pool
 }
 
@@ -109,6 +110,7 @@ func (p *ConnPool) addConn(conn *Conn) *Conn {
 }
 
 func (p *ConnPool) Shutdown(conn *Conn) {
+	sLog.Printf("Shutdown: %p", p)
 	p.Lock()
 	if c, ok := p.pool[conn.key]; ok && c == conn {
 		delete(p.pool, conn.key)
@@ -119,6 +121,7 @@ func (p *ConnPool) Shutdown(conn *Conn) {
 }
 
 func (p *ConnPool) Close() {
+	sLog.Printf("Close: %p", p)
 	close(p.shutdownCh)
 	p.wg.Wait()
 }
@@ -144,7 +147,7 @@ func (p *ConnPool) getClnt(addr net.Addr, st rpc_stream.SType) (*Conn, error) {
 // RPC is used to make an RPC call to a remote host
 func (p *ConnPool) RPC(addr net.Addr, st rpc_stream.SType, version int,
 	method string, args interface{}, reply interface{}) error {
-
+	sLog.Printf("RPC: pool->%p addr: %s stream: %s method: %s", p, addr, st, method)
 	if reply == nil {
 		return ErrNeedReply
 	}

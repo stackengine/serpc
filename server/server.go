@@ -57,6 +57,7 @@ func Register(name string, obj interface{}) error {
 type RPCImpl struct {
 	inboundTLS  *tls.Config
 	isTLS       bool
+	secure      bool
 	outboundTLS *tls.Config
 	rpc_l       net.Listener
 	rpc_svr     *netrpc.Server
@@ -72,7 +73,7 @@ func (impl *RPCImpl) Server() *netrpc.Server {
 	return impl.rpc_svr
 }
 
-func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, port int) error {
+func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, enforce_secure bool, port int) error {
 	var err error
 
 	if tlscfg != nil {
@@ -87,7 +88,7 @@ func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, port int) error {
 	}
 
 	impl.rpc_svr = netrpc.NewServer()
-
+	impl.secure = enforce_secure
 	if impl.rpc_l, err = net.ListenTCP("tcp",
 		&net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: port}); err != nil {
 		sLog.ErrPrintf("rpc: failed to do listen: %v", err)
@@ -132,6 +133,8 @@ func (impl *RPCImpl) process() {
 			conn.Close()
 		}
 
+		sLog.Printf("Connection from: (%s)", conn.RemoteAddr())
+
 		switch rpc_stream.MuxVersion(sVers[0]) {
 		case rpc_stream.Mux_v1:
 			go impl.Mux_v1_RPC(conn, false)
@@ -171,7 +174,7 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 		return
 	}
 
-	if !isTLS && impl.inboundTLS != nil && rpc_stream.SType(sType[0]) != rpc_stream.RpcTLS {
+	if impl.secure && !isTLS && impl.inboundTLS != nil && rpc_stream.SType(sType[0]) != rpc_stream.RpcTLS {
 		sLog.Printf("Non-TLS connection attempted from %s", conn.RemoteAddr())
 		conn.Close()
 		return
@@ -190,6 +193,7 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 		impl.Mux_v1_RPC(conn, true)
 
 	case rpc_stream.Registered:
+		sLog.Printf("Stream is: Registerd: %s", conn.RemoteAddr())
 		go impl.serviceRPC(conn)
 
 	default:
@@ -205,6 +209,8 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 
 func (impl *RPCImpl) serviceRPC(conn net.Conn) {
 	//	codec := codec.GoRpc.ServerCodec(conn, impl.mh)
+	sLog.Printf("Processing connection from %s", conn.RemoteAddr())
 	impl.rpc_svr.ServeConn(conn)
+	sLog.Printf("Close connection from %s", conn.RemoteAddr())
 	conn.Close()
 }

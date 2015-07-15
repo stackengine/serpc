@@ -22,3 +22,5 @@ _testmain.go
 *.exe
 *.test
 *.prof
+cscope.out
+cscope.files

@@ -7,7 +7,7 @@ import (
 )
 
 type SvcRPC interface {
-	Init(*ssltls.Cfg, int) error
+	Init(*ssltls.Cfg, bool, int) error
 	Start() error
 	Shutdown()
 	Server() *netrpc.Server

@@ -3,10 +3,10 @@ package rpc_client
 import (
 	"crypto/tls"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/stackengine/serpc"
 	"github.com/ugorji/go/codec"
 )
 
@@ -127,12 +127,12 @@ func (p *ConnPool) Close() {
 }
 
 // get a cached connection or create and add to pool
-func (p *ConnPool) getClnt(addr net.Addr, st rpc_stream.SType) (*Conn, error) {
+func (p *ConnPool) getClnt(addr net.Addr, st string) (*Conn, error) {
 	var (
 		c   *Conn
 		err error
 	)
-	key := addr.String() + "/" + st.String()
+	key := addr.String() + "/" + st
 	c = p.getConn(key)
 	if c == nil {
 		c, err = NewConn(p.mh, addr, st, key, p.timo, p.tlsConfig)
@@ -145,8 +145,10 @@ func (p *ConnPool) getClnt(addr net.Addr, st rpc_stream.SType) (*Conn, error) {
 }
 
 // RPC is used to make an RPC call to a remote host
-func (p *ConnPool) RPC(addr net.Addr, st rpc_stream.SType, version int,
+func (p *ConnPool) RPC(addr net.Addr, stream_type string, version int,
 	method string, args interface{}, reply interface{}) error {
+
+	st := strings.ToUpper(stream_type)
 	sLog.Printf("RPC: pool->%p addr: %s stream: %s method: %s", p, addr, st, method)
 	if reply == nil {
 		return ErrNeedReply
@@ -156,7 +158,7 @@ func (p *ConnPool) RPC(addr net.Addr, st rpc_stream.SType, version int,
 		sLog.Printf("rpc error: getClnt()  %v", err)
 		return ErrNoClient
 	}
-
+	sLog.Printf("@%p -> RPC(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
 	err = clnt_stream.rpc_clnt.Call(method, args, reply)
 	if err != nil {
 		p.Shutdown(clnt_stream)

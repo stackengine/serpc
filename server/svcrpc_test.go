@@ -1,12 +1,10 @@
 package rpc_server
 
 import (
-	"fmt"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/stackengine/selog"
 	"github.com/stackengine/serpc"
 	"github.com/stackengine/serpc/client"
 	"github.com/stretchr/testify/assert"
@@ -26,14 +24,18 @@ type mockObj struct {
 }
 
 func (m *mockObj) ServMock(args int, reply *int) error {
-	fmt.Printf("ServMock called: %v %v\n", args, reply)
 	*reply = args
 	return nil
 }
 
 func TestMore(t *testing.T) {
+	var (
+		out int
+		in  = 42
+	)
+
 	Nuke()
-	selog.SetLevel("all", selog.Debug)
+	//	selog.SetLevel("all", selog.Debug)
 
 	var this mockObj
 
@@ -51,15 +53,12 @@ func TestMore(t *testing.T) {
 	dest, err := net.ResolveTCPAddr("tcp", "127.0.0.1:1999")
 	assert.Nil(t, err)
 
-	pool := rpc_client.NewPool(nil, 60*time.Second, 30*time.Second, nil)
-	assert.Equal(t, pool.RPC(dest, rpc_stream.Registered, 1, "mock.ServMock", nil, nil), rpc_client.ErrNeedReply)
-	var (
-		out int
-		in  = 42
-	)
+	pool := rpc_client.NewPool(nil, 10*time.Second, 10*time.Second, nil)
 
 	// a bogus stream should fail
-	assert.Equal(t, pool.RPC(dest, 3, 1, "mock.ServMock", in, &out), rpc_client.ErrCallFailed)
+	assert.Equal(t, pool.RPC(dest, "Bogus", 1, "mock.ServMock", in, &out), rpc_client.ErrCallFailed)
+
+	assert.Equal(t, pool.RPC(dest, rpc_stream.Registered, 1, "mock.ServMock", nil, nil), rpc_client.ErrNeedReply)
 
 	assert.Nil(t, pool.RPC(dest, rpc_stream.Registered, 1, "mock.ServMock", in, &out))
 	assert.Equal(t, in, out)

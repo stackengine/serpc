@@ -19,19 +19,15 @@ func TestAdd(t *testing.T) {
 	assert.Equal(t, ErrNoProto, Add(Mux_v1, nil))
 	assert.Equal(t, ErrMissingServFunc, Add(Mux_v1, &Sproto{}))
 	assert.Equal(t, ErrMissingName, Add(Mux_v1, &Sproto{serv: bogus}))
-	assert.Equal(t, ErrAlreadyExists, Add(Mux_v1, &Sproto{name: "Registered", serv: bogus}))
 
 	var p = &Sproto{name: "New", serv: bogus}
 	assert.Nil(t, Add(Mux_v1, p))
-	assert.Equal(t, 4, p.stype)
 
 	// should replace not add.
 	assert.Nil(t, Add(Mux_v1, p))
-	assert.Equal(t, 4, p.stype)
 
 	var y = &Sproto{name: "mess", serv: bogus}
 	assert.Nil(t, Add(Mux_v1, y))
-	assert.Equal(t, 5, y.stype)
 
 	// test NewProto
 	_, err = NewProto("foo", nil)

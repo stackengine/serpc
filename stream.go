@@ -13,11 +13,12 @@ import (
 var (
 	sLog = selog.Register("rpc_stream", 0)
 
-	ErrMissingServFunc = errors.New("Proto struct is missing serv function")
-	ErrMissingName     = errors.New("Proto needs a name ")
-	ErrAlreadyExists   = errors.New("Proto already exists ")
-	ErrBadVersions     = errors.New("Mux version unsupported ")
-	ErrNoProto         = errors.New("Add must have a proto ")
+	ErrMissingServFunc  = errors.New("Proto struct is missing serv function")
+	ErrMissingName      = errors.New("Proto needs a name")
+	ErrAlreadyExists    = errors.New("Proto already exists")
+	ErrBadVersions      = errors.New("Mux version unsupported")
+	ErrProtoUnsupported = errors.New("Proto not supported")
+	ErrNoProto          = errors.New("Add must have a proto")
 )
 
 type MuxVersion uint8
@@ -40,59 +41,40 @@ func (mv MuxVersion) String() string {
 	return str
 }
 
-type SType uint8
-
 // known stream types.
 const (
-	UnknownStream SType = iota
-	RpcTLS
-	Raft
-	Mesh
-	Registered
+	RpcTLS     = "RPCTLS"
+	Raft       = "RAFT"
+	Mesh       = "MESH"
+	Registered = "REG"
 )
 
-var sTypeName = map[SType]string{
-	UnknownStream: "unknown",
-	RpcTLS:        "RPCTLS",
-	Raft:          "RAFT",
-	Mesh:          "MESH",
-	Registered:    "REGISTERED",
-}
-
-func (st SType) String() string {
-	str := sTypeName[st]
-	if len(str) < 1 {
-		return sTypeName[UnknownStream]
-	}
-	return str
+func Nameify(name string) string {
+	return fmt.Sprintf("%s\n", strings.ToUpper(name))
 }
 
 var (
-	SprotoSw  = make(map[MuxVersion]map[SType]*Sproto)
-	st_indx   = make(map[MuxVersion]SType)
+	SprotoSw  = make(map[MuxVersion]map[string]*Sproto)
 	proto_lck sync.Mutex
 )
 
 func init() {
-	SprotoSw[Mux_v1] = make(map[SType]*Sproto)
+	SprotoSw[Mux_v1] = make(map[string]*Sproto)
 
 	// lame but works
-	SprotoSw[Mux_v1][RpcTLS] = &Sproto{name: RpcTLS.String(), stype: RpcTLS}
-	SprotoSw[Mux_v1][Raft] = &Sproto{name: Raft.String(), stype: Raft}
-	SprotoSw[Mux_v1][Mesh] = &Sproto{name: Mesh.String(), stype: Mesh}
-	SprotoSw[Mux_v1][Registered] = &Sproto{name: Registered.String(), stype: Registered}
-
-	st_indx[Mux_v1] = Registered + 1
+	SprotoSw[Mux_v1][RpcTLS] = &Sproto{name: RpcTLS}
+	SprotoSw[Mux_v1][Raft] = &Sproto{name: Raft}
+	SprotoSw[Mux_v1][Mesh] = &Sproto{name: Mesh}
+	SprotoSw[Mux_v1][Registered] = &Sproto{name: Registered}
 }
 
 type Sproto struct {
-	stype SType
-	name  string
-	serv  func(conn net.Conn) error
+	name string
+	serv func(conn net.Conn) error
 }
 
 func (p *Sproto) String() string {
-	return fmt.Sprintf("%-12.12s (%d) %s %p", p.name, p.stype, p.stype, p.serv)
+	return fmt.Sprintf("%-12.12s %p", p.name, p.serv)
 }
 
 func NewProto(name string, serv func(net.Conn) error) (*Sproto, error) {
@@ -105,14 +87,14 @@ func NewProto(name string, serv func(net.Conn) error) (*Sproto, error) {
 	return &Sproto{name: strings.ToUpper(name), serv: serv}, nil
 }
 
-func Lookup(ver MuxVersion, s SType) (func(conn net.Conn) error, error) {
+func Lookup(ver MuxVersion, s string) (func(conn net.Conn) error, error) {
 	vSw := SprotoSw[ver]
 	if vSw == nil {
 		return nil, ErrBadVersions
 	}
 	proto := vSw[s]
 	if proto == nil || proto.serv == nil {
-		return nil, ErrBadVersions
+		return nil, ErrProtoUnsupported
 	}
 	return proto.serv, nil
 }
@@ -132,10 +114,11 @@ func Add(ver MuxVersion, proto *Sproto) error {
 	if len(proto.name) < 1 {
 		return ErrMissingName
 	}
-	proto.name = strings.ToUpper(proto.name)
+
+	proto.name = Nameify(proto.name)
 	// these are hard coded and can not be overridden
-	if proto.name == sTypeName[RpcTLS] ||
-		proto.name == sTypeName[Registered] {
+	if proto.name == RpcTLS ||
+		proto.name == Registered {
 		return ErrAlreadyExists
 	}
 
@@ -147,19 +130,11 @@ func Add(ver MuxVersion, proto *Sproto) error {
 	for i, p := range ver_proto {
 		// if we find it replace it
 		if p.name == proto.name {
-			proto.stype = i
 			ver_proto[i] = proto
 			return nil
 		}
 	}
-
 	// else add it
-	proto.stype = st_indx[ver]
-	ver_proto[proto.stype] = proto
-
-	// add it to the name list too
-	sTypeName[proto.stype] = proto.name
-
-	st_indx[ver]++
+	ver_proto[proto.name] = proto
 	return nil
 }

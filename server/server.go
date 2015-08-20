@@ -6,7 +6,9 @@ import (
 	"io"
 	"net"
 	netrpc "net/rpc"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/stackengine/selog"
 	"github.com/stackengine/serpc"
@@ -165,23 +167,38 @@ func (impl *RPCImpl) Start() error {
 }
 
 func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
-	sType := make([]byte, 1)
-	if _, err := conn.Read(sType); err != nil {
-		if err != io.EOF {
-			sLog.Printf("serviceMuxRPC: failed to read streamtype byte: %v", err)
+	var (
+		buffy       = make([]byte, 1)
+		type_buffer []byte
+		err         error
+	)
+	conn.SetReadDeadline(time.Now().Add(time.Second * 5))
+	for {
+		if _, err = conn.Read(buffy); err != nil {
+			break
 		}
+		if buffy[0] == '\n' {
+			break
+		}
+		type_buffer = append(type_buffer, buffy[0])
+	}
+	conn.SetReadDeadline(time.Time{})
+
+	if err != nil {
+		sLog.Printf("Error reading stream type from %s (%s)", conn.RemoteAddr(), err)
 		conn.Close()
 		return
 	}
 
-	if impl.secure && !isTLS && impl.inboundTLS != nil && rpc_stream.SType(sType[0]) != rpc_stream.RpcTLS {
+	sType := strings.TrimSpace(string(type_buffer))
+	if impl.secure && !isTLS && impl.inboundTLS != nil && string(sType) != rpc_stream.RpcTLS {
 		sLog.Printf("Non-TLS connection attempted from %s", conn.RemoteAddr())
 		conn.Close()
 		return
 	}
 
-	s := rpc_stream.SType(sType[0])
-	switch s {
+	sLog.Println("Got stream type: ", sType)
+	switch sType {
 	case rpc_stream.RpcTLS:
 		if impl.inboundTLS == nil {
 			sLog.ErrPrintf("TLS connection attempted, server not configured for TLS (%s)",
@@ -197,9 +214,9 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 		go impl.serviceRPC(conn)
 
 	default:
-		serv, err := rpc_stream.Lookup(rpc_stream.Mux_v1, s)
+		serv, err := rpc_stream.Lookup(rpc_stream.Mux_v1, sType)
 		if err != nil {
-			sLog.ErrPrintf("Error on stream (%d) (%s) - %s", s, conn.RemoteAddr(), err)
+			sLog.ErrPrintf("Error on stream (%s) (%s) - %s", sType, conn.RemoteAddr(), err)
 			conn.Close()
 			return
 		}

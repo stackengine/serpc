@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	netrpc "net/rpc"
-
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,31 +20,32 @@ var sLog = selog.Register("clntrpc", 0)
 type Conn struct {
 	sync.Mutex
 
-	addr     net.Addr
-	key      string
-	lastUsed time.Time
-	mh       *codec.MsgpackHandle
-	net_con  net.Conn
-	pool     *ConnPool
-	refCount int32
-	rpc_clnt *netrpc.Client
-	shutdown int32
-	st       rpc_stream.SType
-	version  int
+	addr        net.Addr
+	key         string
+	lastUsed    time.Time
+	mh          *codec.MsgpackHandle
+	net_con     net.Conn
+	pool        *ConnPool
+	refCount    int32
+	rpc_clnt    *netrpc.Client
+	shutdown    int32
+	stream_type string
+	version     int
 }
 
 func (c *Conn) String() string {
 	return fmt.Sprintf("Conn:%p type: %s ref: %d key: %s addr: %s shutdown: %d",
-		c, c.st, c.refCount, c.key, c.addr.String(), c.shutdown)
+		c, c.stream_type, c.refCount, c.key, c.addr.String(), c.shutdown)
 }
 
 func NewConn(mh *codec.MsgpackHandle,
 	addr net.Addr,
-	st rpc_stream.SType,
+	stream_type string,
 	key string,
 	timo time.Duration,
 	tlsConfig *tls.Config) (*Conn, error) {
 
+	sLog.Printf("New Connection: addr -> %s stream -> '%s' key -> %s", addr, stream_type, key)
 	// Try to dial the conn
 	conn, err := net.DialTimeout("tcp", addr.String(), timo)
 	if err != nil {
@@ -67,7 +67,8 @@ func NewConn(mh *codec.MsgpackHandle,
 	// Check if TLS is enabled
 	if tlsConfig != nil {
 		// Switch the connection into TLS mode
-		if _, err := conn.Write([]byte{byte(rpc_stream.RpcTLS)}); err != nil {
+		sLog.Println("Switch Connection for: ", rpc_stream.RpcTLS)
+		if _, err := conn.Write([]byte(rpc_stream.RpcTLS)); err != nil {
 			conn.Close()
 			return nil, err
 		}
@@ -80,12 +81,15 @@ func NewConn(mh *codec.MsgpackHandle,
 		conn = tconn
 	}
 
-	// write stream type byte
-	if _, err := conn.Write([]byte{byte(st)}); err != nil {
+	st := rpc_stream.Nameify(stream_type)
+
+	// write stream type bytes
+	if _, err := conn.Write([]byte(st)); err != nil {
 		conn.Close()
 		return nil, err
 	}
 
+	sLog.Printf("Wrote stream type for: '%s'", stream_type)
 	var clnt *netrpc.Client
 
 	if mh != nil {
@@ -97,13 +101,13 @@ func NewConn(mh *codec.MsgpackHandle,
 
 	// build Conn
 	c := &Conn{
-		refCount: 1,
-		addr:     addr,
-		net_con:  conn,
-		rpc_clnt: clnt,
-		lastUsed: time.Now(),
-		key:      key,
-		st:       st,
+		refCount:    1,
+		addr:        addr,
+		net_con:     conn,
+		rpc_clnt:    clnt,
+		lastUsed:    time.Now(),
+		key:         key,
+		stream_type: st,
 	}
 	return c, nil
 }

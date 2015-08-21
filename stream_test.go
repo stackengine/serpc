@@ -16,18 +16,18 @@ func TestAdd(t *testing.T) {
 	var err error
 
 	// test Add
-	assert.Equal(t, ErrNoProto, Add(Mux_v1, nil))
-	assert.Equal(t, ErrMissingServFunc, Add(Mux_v1, &Sproto{}))
-	assert.Equal(t, ErrMissingName, Add(Mux_v1, &Sproto{serv: bogus}))
+	assert.Equal(t, ErrNoProto, Add(Mux_v2, nil))
+	assert.Equal(t, ErrMissingServFunc, Add(Mux_v2, &Sproto{}))
+	assert.Equal(t, ErrMissingName, Add(Mux_v2, &Sproto{serv: bogus}))
 
 	var p = &Sproto{name: "New", serv: bogus}
-	assert.Nil(t, Add(Mux_v1, p))
+	assert.Nil(t, Add(Mux_v2, p))
 
 	// should replace not add.
-	assert.Nil(t, Add(Mux_v1, p))
+	assert.Nil(t, Add(Mux_v2, p))
 
 	var y = &Sproto{name: "mess", serv: bogus}
-	assert.Nil(t, Add(Mux_v1, y))
+	assert.Nil(t, Add(Mux_v2, y))
 
 	// test NewProto
 	_, err = NewProto("foo", nil)
@@ -46,5 +46,5 @@ func servfunc(conn io.ReadWriteCloser) error {
 
 func TestServFunc(t *testing.T) {
 	var p = &Sproto{name: "myserv", serv: bogus}
-	assert.Nil(t, Add(Mux_v1, p))
+	assert.Nil(t, Add(Mux_v2, p))
 }

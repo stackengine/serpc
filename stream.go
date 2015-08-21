@@ -26,11 +26,13 @@ type MuxVersion uint8
 const (
 	UnknownVersion MuxVersion = iota
 	Mux_v1
+	Mux_v2
 )
 
 var MuxVersionName = map[MuxVersion]string{
 	UnknownVersion: "unknown",
 	Mux_v1:         "Mux_v1",
+	Mux_v2:         "Mux_v2",
 }
 
 func (mv MuxVersion) String() string {
@@ -59,13 +61,13 @@ var (
 )
 
 func init() {
-	SprotoSw[Mux_v1] = make(map[string]*Sproto)
+	SprotoSw[Mux_v2] = make(map[string]*Sproto)
 
 	// lame but works
-	SprotoSw[Mux_v1][RpcTLS] = &Sproto{name: RpcTLS}
-	SprotoSw[Mux_v1][Raft] = &Sproto{name: Raft}
-	SprotoSw[Mux_v1][Mesh] = &Sproto{name: Mesh}
-	SprotoSw[Mux_v1][Registered] = &Sproto{name: Registered}
+	SprotoSw[Mux_v2][RpcTLS] = &Sproto{name: RpcTLS}
+	SprotoSw[Mux_v2][Raft] = &Sproto{name: Raft}
+	SprotoSw[Mux_v2][Mesh] = &Sproto{name: Mesh}
+	SprotoSw[Mux_v2][Registered] = &Sproto{name: Registered}
 }
 
 type Sproto struct {

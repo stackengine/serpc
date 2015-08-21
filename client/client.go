@@ -59,7 +59,7 @@ func NewConn(mh *codec.MsgpackHandle,
 	}
 
 	// write stream mux version byte
-	if _, err := conn.Write([]byte{byte(rpc_stream.Mux_v1)}); err != nil {
+	if _, err := conn.Write([]byte{byte(rpc_stream.Mux_v2)}); err != nil {
 		conn.Close()
 		return nil, err
 	}

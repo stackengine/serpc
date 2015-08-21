@@ -138,8 +138,8 @@ func (impl *RPCImpl) process() {
 		sLog.Printf("Connection from: (%s)", conn.RemoteAddr())
 
 		switch rpc_stream.MuxVersion(sVers[0]) {
-		case rpc_stream.Mux_v1:
-			go impl.Mux_v1_RPC(conn, false)
+		case rpc_stream.Mux_v2:
+			go impl.MuxRPC(conn, false)
 		default:
 			sLog.ErrPrintf("Unknown MUX Version: %v (%s)",
 				sVers[0], conn.RemoteAddr())
@@ -166,7 +166,7 @@ func (impl *RPCImpl) Start() error {
 	return nil
 }
 
-func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
+func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 	var (
 		buffy       = make([]byte, 1)
 		type_buffer []byte
@@ -207,14 +207,14 @@ func (impl *RPCImpl) Mux_v1_RPC(conn net.Conn, isTLS bool) {
 			return
 		}
 		conn = tls.Server(conn, impl.inboundTLS)
-		impl.Mux_v1_RPC(conn, true)
+		impl.MuxRPC(conn, true)
 
 	case rpc_stream.Registered:
 		sLog.Printf("Stream is: Registerd: %s", conn.RemoteAddr())
 		go impl.serviceRPC(conn)
 
 	default:
-		serv, err := rpc_stream.Lookup(rpc_stream.Mux_v1, sType)
+		serv, err := rpc_stream.Lookup(rpc_stream.Mux_v2, sType)
 		if err != nil {
 			sLog.ErrPrintf("Error on stream (%s) (%s) - %s", sType, conn.RemoteAddr(), err)
 			conn.Close()

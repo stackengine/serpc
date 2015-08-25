@@ -45,7 +45,7 @@ func NewConn(mh *codec.MsgpackHandle,
 	timo time.Duration,
 	tlsConfig *tls.Config) (*Conn, error) {
 
-	sLog.Printf("New Connection: addr -> %s stream -> '%s' key -> %s", addr, stream_type, key)
+	//	sLog.Printf("New Connection: addr -> %s stream -> '%s' key -> %s", addr, stream_type, key)
 	// Try to dial the conn
 	conn, err := net.DialTimeout("tcp", addr.String(), timo)
 	if err != nil {
@@ -67,7 +67,7 @@ func NewConn(mh *codec.MsgpackHandle,
 	// Check if TLS is enabled
 	if tlsConfig != nil {
 		// Switch the connection into TLS mode
-		sLog.Println("Switch Connection for: ", rpc_stream.RpcTLS)
+		//		sLog.Println("Switch Connection for: ", rpc_stream.RpcTLS)
 		if _, err := conn.Write([]byte(rpc_stream.Nameify(rpc_stream.RpcTLS))); err != nil {
 			conn.Close()
 			return nil, err
@@ -89,7 +89,7 @@ func NewConn(mh *codec.MsgpackHandle,
 		return nil, err
 	}
 
-	sLog.Printf("Wrote stream type for: '%s'", stream_type)
+	//	sLog.Printf("Wrote stream type for: '%s'", stream_type)
 	var clnt *netrpc.Client
 
 	if mh != nil {

@@ -135,7 +135,7 @@ func (impl *RPCImpl) process() {
 			conn.Close()
 		}
 
-		sLog.Printf("Connection from: (%s)", conn.RemoteAddr())
+		//		sLog.Printf("Connection from: (%s)", conn.RemoteAddr())
 
 		switch rpc_stream.MuxVersion(sVers[0]) {
 		case rpc_stream.Mux_v2:
@@ -197,7 +197,7 @@ func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 		return
 	}
 
-	sLog.Println("Got stream type: ", sType)
+	//	sLog.Println("Got stream type: ", sType)
 	switch sType {
 	case rpc_stream.RpcTLS:
 		if impl.inboundTLS == nil {
@@ -210,7 +210,7 @@ func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 		impl.MuxRPC(conn, true)
 
 	case rpc_stream.Registered:
-		sLog.Printf("Stream is: Registerd: %s", conn.RemoteAddr())
+		//		sLog.Printf("Stream is: Registerd: %s", conn.RemoteAddr())
 		go impl.serviceRPC(conn)
 
 	default:

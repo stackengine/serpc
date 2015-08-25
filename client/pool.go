@@ -150,7 +150,7 @@ func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.Mux
 	method string, args interface{}, reply interface{}) error {
 
 	st := strings.ToUpper(stream_type)
-	sLog.Printf("RPC: pool->%p addr: %s stream: %s method: %s", p, addr, st, method)
+	//	sLog.Printf("RPC: pool->%p addr: %s stream: %s method: %s", p, addr, st, method)
 	if reply == nil {
 		return ErrNeedReply
 	}
@@ -159,7 +159,7 @@ func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.Mux
 		sLog.Printf("rpc error: getClnt()  %v", err)
 		return ErrNoClient
 	}
-	sLog.Printf("@%p -> RPC(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
+	//	sLog.Printf("@%p -> RPC(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
 	err = clnt_stream.rpc_clnt.Call(method, args, reply)
 	if err != nil {
 		p.Shutdown(clnt_stream)

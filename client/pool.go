@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/stackengine/serpc"
 	"github.com/ugorji/go/codec"
 )
 
@@ -145,7 +146,7 @@ func (p *ConnPool) getClnt(addr net.Addr, st string) (*Conn, error) {
 }
 
 // RPC is used to make an RPC call to a remote host
-func (p *ConnPool) RPC(addr net.Addr, stream_type string, version int,
+func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.MuxVersion,
 	method string, args interface{}, reply interface{}) error {
 
 	st := strings.ToUpper(stream_type)

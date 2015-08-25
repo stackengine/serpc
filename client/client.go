@@ -68,7 +68,7 @@ func NewConn(mh *codec.MsgpackHandle,
 	if tlsConfig != nil {
 		// Switch the connection into TLS mode
 		sLog.Println("Switch Connection for: ", rpc_stream.RpcTLS)
-		if _, err := conn.Write([]byte(rpc_stream.RpcTLS)); err != nil {
+		if _, err := conn.Write([]byte(rpc_stream.Nameify(rpc_stream.RpcTLS))); err != nil {
 			conn.Close()
 			return nil, err
 		}

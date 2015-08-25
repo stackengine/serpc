@@ -94,6 +94,7 @@ func Lookup(ver MuxVersion, s string) (func(conn net.Conn) error, error) {
 	if vSw == nil {
 		return nil, ErrBadVersions
 	}
+	// sLog.Printf("looking for v: %d '%s' in SprotoSw: %#v", ver, s, vSw)
 	proto := vSw[s]
 	if proto == nil || proto.serv == nil {
 		return nil, ErrProtoUnsupported
@@ -117,7 +118,7 @@ func Add(ver MuxVersion, proto *Sproto) error {
 		return ErrMissingName
 	}
 
-	proto.name = Nameify(proto.name)
+	proto.name = strings.ToUpper(proto.name)
 	// these are hard coded and can not be overridden
 	if proto.name == RpcTLS ||
 		proto.name == Registered {

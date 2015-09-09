@@ -3,6 +3,7 @@ package rpc_client
 import (
 	"crypto/tls"
 	"net"
+	"net/rpc"
 	"strings"
 	"sync"
 	"time"
@@ -168,4 +169,44 @@ func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.Mux
 	}
 	clnt_stream.Release()
 	return err
+}
+
+// Call is used to make an RPC call to a remote host
+func (p *ConnPool) Call(addr net.Addr, stream_type string, version rpc_stream.MuxVersion,
+	method string, args interface{}, reply interface{}) error {
+
+	call, clnt_stream := p.Go(addr, stream_type, version, method, args, reply, nil)
+	call = <-call.Done
+	if clnt_stream != nil {
+		clnt_stream.Release()
+	}
+	return call.Error
+}
+
+// Go is used to make an RPC Go call to a remote host
+func (p *ConnPool) Go(addr net.Addr, stream_type string, version rpc_stream.MuxVersion,
+	method string, args interface{}, reply interface{}, done chan *rpc.Call) (*rpc.Call, *Conn) {
+
+	st := strings.ToUpper(stream_type)
+	//	sLog.Printf("Go: pool->%p addr: %s stream: %s method: %s", p, addr, st, method)
+	if reply == nil {
+		return &rpc.Call{ServiceMethod: method, Args: args, Reply: reply, Done: done, Error: ErrNeedReply}, nil
+	}
+	clnt_stream, err := p.getClnt(addr, st)
+	if err != nil {
+		sLog.Printf("rpc error: getClnt()  %v", err)
+		return &rpc.Call{ServiceMethod: method, Args: args, Reply: reply, Done: done, Error: ErrNoClient}, clnt_stream
+	}
+	//	sLog.Printf("@%p -> Go(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
+	call := clnt_stream.rpc_clnt.Go(method, args, reply, done)
+	if call.Error != nil {
+		p.Shutdown(clnt_stream)
+		sLog.Printf("error on Go():  %v", err)
+		return &rpc.Call{ServiceMethod: method, Args: args, Reply: reply, Done: done, Error: ErrCallFailed}, clnt_stream
+	}
+
+	// caller of this method needs to call this:
+	// clnt_stream.Release()
+
+	return call, clnt_stream
 }

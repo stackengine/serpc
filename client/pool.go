@@ -159,12 +159,11 @@ func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.Mux
 		sLog.Printf("rpc error: getClnt()  %v", err)
 		return ErrNoClient
 	}
-	//	sLog.Printf("@%p -> RPC(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
+	// sLog.Printf("@%p -> RPC(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
 	err = clnt_stream.rpc_clnt.Call(method, args, reply)
 	if err != nil {
 		p.Shutdown(clnt_stream)
 		sLog.Printf("error on Call():  %v", err)
-		err = ErrCallFailed
 	}
 	clnt_stream.Release()
 	return err
@@ -174,12 +173,7 @@ func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.Mux
 func (p *ConnPool) Call(addr net.Addr, stream_type string, version rpc_stream.MuxVersion,
 	method string, args interface{}, reply interface{}) error {
 
-	call, clnt_stream := p.Go(addr, stream_type, version, method, args, reply, nil)
-	call = <-call.Done
-	if clnt_stream != nil {
-		clnt_stream.Release()
-	}
-	return call.Error
+	return p.RPC(addr, stream_type, version, method, args, reply)
 }
 
 // Go is used to make an RPC Go call to a remote host

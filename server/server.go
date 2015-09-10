@@ -13,6 +13,7 @@ import (
 	"github.com/stackengine/selog"
 	"github.com/stackengine/serpc"
 	"github.com/stackengine/ssltls"
+	"github.com/ugorji/go/codec"
 )
 
 var (
@@ -64,6 +65,7 @@ type RPCImpl struct {
 	rpc_l       net.Listener
 	rpc_svr     *netrpc.Server
 	lck         sync.Mutex
+	mh          *codec.MsgpackHandle
 	shutdown    bool
 }
 
@@ -75,9 +77,10 @@ func (impl *RPCImpl) Server() *netrpc.Server {
 	return impl.rpc_svr
 }
 
-func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, enforce_secure bool, port int) error {
+func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, enforce_secure bool, port int, mh *codec.MsgpackHandle) error {
 	var err error
 
+	impl.mh = mh
 	if tlscfg != nil {
 		if impl.outboundTLS, err = tlscfg.OutgoingTLSConfig(); err != nil {
 			return err
@@ -225,9 +228,13 @@ func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 }
 
 func (impl *RPCImpl) serviceRPC(conn net.Conn) {
-	//	codec := codec.GoRpc.ServerCodec(conn, impl.mh)
 	sLog.Printf("Processing connection from %s", conn.RemoteAddr())
-	impl.rpc_svr.ServeConn(conn)
+	if impl.mh == nil {
+		impl.rpc_svr.ServeConn(conn)
+	} else {
+		c := codec.GoRpc.ServerCodec(conn, impl.mh)
+		impl.rpc_svr.ServeCodec(c)
+	}
 	sLog.Printf("Close connection from %s", conn.RemoteAddr())
 	conn.Close()
 }

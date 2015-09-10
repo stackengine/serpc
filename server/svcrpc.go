@@ -1,14 +1,16 @@
 package rpc_server
 
 import (
+	"io"
 	netrpc "net/rpc"
 
 	"github.com/stackengine/ssltls"
-	"github.com/ugorji/go/codec"
 )
 
+type NewServerCodec func(conn io.ReadWriteCloser) netrpc.ServerCodec
+
 type SvcRPC interface {
-	Init(*ssltls.Cfg, bool, int, *codec.MsgpackHandle) error
+	Init(*ssltls.Cfg, bool, int, NewServerCodec) error
 	Start() error
 	Shutdown()
 	Server() *netrpc.Server

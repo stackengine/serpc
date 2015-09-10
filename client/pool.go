@@ -9,20 +9,19 @@ import (
 	"time"
 
 	"github.com/stackengine/serpc"
-	"github.com/ugorji/go/codec"
 )
 
 type ConnPool struct {
 	sync.Mutex
 
-	maxTime    time.Duration    // The maximum time to keep a connection open
-	timo       time.Duration    // The maximum time to attempt net.Dail()
-	pool       map[string]*Conn // Pool maps an address to a open connection
-	tlsConfig  *tls.Config      // TLS settings
-	shutdown   bool             // Used to indicate the pool is shutdown
-	shutdownCh chan struct{}
-	wg         sync.WaitGroup
-	mh         *codec.MsgpackHandle
+	maxTime        time.Duration    // The maximum time to keep a connection open
+	timo           time.Duration    // The maximum time to attempt net.Dail()
+	pool           map[string]*Conn // Pool maps an address to a open connection
+	tlsConfig      *tls.Config      // TLS settings
+	shutdown       bool             // Used to indicate the pool is shutdown
+	shutdownCh     chan struct{}
+	wg             sync.WaitGroup
+	newClientCodec NewClientCodec
 }
 
 // Reap is used to close unused conns open over maxTime
@@ -65,18 +64,18 @@ func (p *ConnPool) reap() {
 // Maintain at most one connection per host, for up to maxTime.
 // Set maxTime to 0 to disable reaping.
 // If TLS settings are provided outgoing connections use TLS.
-func NewPool(mh *codec.MsgpackHandle,
+func NewPool(newClientCodec NewClientCodec,
 	maxTime time.Duration,
 	timo time.Duration,
 	tlsConfig *tls.Config) *ConnPool {
 
 	pool := &ConnPool{
-		maxTime:    maxTime,
-		timo:       timo,
-		pool:       make(map[string]*Conn),
-		tlsConfig:  tlsConfig,
-		shutdownCh: make(chan struct{}),
-		mh:         mh,
+		maxTime:        maxTime,
+		timo:           timo,
+		pool:           make(map[string]*Conn),
+		tlsConfig:      tlsConfig,
+		shutdownCh:     make(chan struct{}),
+		newClientCodec: newClientCodec,
 	}
 	if maxTime > 0 {
 		go pool.reap()
@@ -137,7 +136,7 @@ func (p *ConnPool) getClnt(addr net.Addr, st string) (*Conn, error) {
 	key := addr.String() + "/" + st
 	c = p.getConn(key)
 	if c == nil {
-		c, err = NewConn(p.mh, addr, st, key, p.timo, p.tlsConfig)
+		c, err = NewConn(p.newClientCodec, addr, st, key, p.timo, p.tlsConfig)
 		if err != nil {
 			return nil, err
 		}

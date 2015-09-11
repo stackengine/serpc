@@ -56,15 +56,18 @@ func Register(name string, obj interface{}) error {
 	return nil
 }
 
+var _ SvcRPC = &RPCImpl{}
+
 type RPCImpl struct {
-	inboundTLS  *tls.Config
-	isTLS       bool
-	secure      bool
-	outboundTLS *tls.Config
-	rpc_l       net.Listener
-	rpc_svr     *netrpc.Server
-	lck         sync.Mutex
-	shutdown    bool
+	inboundTLS     *tls.Config
+	isTLS          bool
+	secure         bool
+	outboundTLS    *tls.Config
+	rpc_l          net.Listener
+	rpc_svr        *netrpc.Server
+	lck            sync.Mutex
+	newServerCodec NewServerCodec
+	shutdown       bool
 }
 
 func NewServer() *RPCImpl {
@@ -75,9 +78,10 @@ func (impl *RPCImpl) Server() *netrpc.Server {
 	return impl.rpc_svr
 }
 
-func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, enforce_secure bool, port int) error {
+func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, enforce_secure bool, port int, newServerCodec NewServerCodec) error {
 	var err error
 
+	impl.newServerCodec = newServerCodec
 	if tlscfg != nil {
 		if impl.outboundTLS, err = tlscfg.OutgoingTLSConfig(); err != nil {
 			return err
@@ -225,9 +229,12 @@ func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 }
 
 func (impl *RPCImpl) serviceRPC(conn net.Conn) {
-	//	codec := codec.GoRpc.ServerCodec(conn, impl.mh)
 	sLog.Printf("Processing connection from %s", conn.RemoteAddr())
-	impl.rpc_svr.ServeConn(conn)
+	if impl.newServerCodec == nil {
+		impl.rpc_svr.ServeConn(conn)
+	} else {
+		impl.rpc_svr.ServeCodec(impl.newServerCodec(conn))
+	}
 	sLog.Printf("Close connection from %s", conn.RemoteAddr())
 	conn.Close()
 }

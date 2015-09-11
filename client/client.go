@@ -3,6 +3,7 @@ package rpc_client
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	netrpc "net/rpc"
 	"sync"
@@ -12,25 +13,26 @@ import (
 	"github.com/stackengine/selog"
 	"github.com/stackengine/serpc"
 	"github.com/stackengine/ssltls"
-	"github.com/ugorji/go/codec"
 )
 
 var sLog = selog.Register("clntrpc", 0)
 
+type NewClientCodec func(conn io.ReadWriteCloser) netrpc.ClientCodec
+
 type Conn struct {
 	sync.Mutex
 
-	addr        net.Addr
-	key         string
-	lastUsed    time.Time
-	mh          *codec.MsgpackHandle
-	net_con     net.Conn
-	pool        *ConnPool
-	refCount    int32
-	rpc_clnt    *netrpc.Client
-	shutdown    int32
-	stream_type string
-	version     int
+	addr           net.Addr
+	key            string
+	lastUsed       time.Time
+	newClientCodec NewClientCodec
+	net_con        net.Conn
+	pool           *ConnPool
+	refCount       int32
+	rpc_clnt       *netrpc.Client
+	shutdown       int32
+	stream_type    string
+	version        int
 }
 
 func (c *Conn) String() string {
@@ -38,7 +40,7 @@ func (c *Conn) String() string {
 		c, c.stream_type, c.refCount, c.key, c.addr.String(), c.shutdown)
 }
 
-func NewConn(mh *codec.MsgpackHandle,
+func NewConn(newClientCodec NewClientCodec,
 	addr net.Addr,
 	stream_type string,
 	key string,
@@ -92,9 +94,8 @@ func NewConn(mh *codec.MsgpackHandle,
 	//	sLog.Printf("Wrote stream type for: '%s'", stream_type)
 	var clnt *netrpc.Client
 
-	if mh != nil {
-		codec := codec.GoRpc.ClientCodec(conn, mh)
-		clnt = netrpc.NewClientWithCodec(codec)
+	if newClientCodec != nil {
+		clnt = netrpc.NewClientWithCodec(newClientCodec(conn))
 	} else {
 		clnt = netrpc.NewClient(conn)
 	}

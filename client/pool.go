@@ -3,25 +3,25 @@ package rpc_client
 import (
 	"crypto/tls"
 	"net"
+	"net/rpc"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/stackengine/serpc"
-	"github.com/ugorji/go/codec"
 )
 
 type ConnPool struct {
 	sync.Mutex
 
-	maxTime    time.Duration    // The maximum time to keep a connection open
-	timo       time.Duration    // The maximum time to attempt net.Dail()
-	pool       map[string]*Conn // Pool maps an address to a open connection
-	tlsConfig  *tls.Config      // TLS settings
-	shutdown   bool             // Used to indicate the pool is shutdown
-	shutdownCh chan struct{}
-	wg         sync.WaitGroup
-	mh         *codec.MsgpackHandle
+	maxTime        time.Duration    // The maximum time to keep a connection open
+	timo           time.Duration    // The maximum time to attempt net.Dail()
+	pool           map[string]*Conn // Pool maps an address to a open connection
+	tlsConfig      *tls.Config      // TLS settings
+	shutdown       bool             // Used to indicate the pool is shutdown
+	shutdownCh     chan struct{}
+	wg             sync.WaitGroup
+	newClientCodec NewClientCodec
 }
 
 // Reap is used to close unused conns open over maxTime
@@ -64,18 +64,18 @@ func (p *ConnPool) reap() {
 // Maintain at most one connection per host, for up to maxTime.
 // Set maxTime to 0 to disable reaping.
 // If TLS settings are provided outgoing connections use TLS.
-func NewPool(mh *codec.MsgpackHandle,
+func NewPool(newClientCodec NewClientCodec,
 	maxTime time.Duration,
 	timo time.Duration,
 	tlsConfig *tls.Config) *ConnPool {
 
 	pool := &ConnPool{
-		maxTime:    maxTime,
-		timo:       timo,
-		pool:       make(map[string]*Conn),
-		tlsConfig:  tlsConfig,
-		shutdownCh: make(chan struct{}),
-		mh:         mh,
+		maxTime:        maxTime,
+		timo:           timo,
+		pool:           make(map[string]*Conn),
+		tlsConfig:      tlsConfig,
+		shutdownCh:     make(chan struct{}),
+		newClientCodec: newClientCodec,
 	}
 	if maxTime > 0 {
 		go pool.reap()
@@ -136,7 +136,7 @@ func (p *ConnPool) getClnt(addr net.Addr, st string) (*Conn, error) {
 	key := addr.String() + "/" + st
 	c = p.getConn(key)
 	if c == nil {
-		c, err = NewConn(p.mh, addr, st, key, p.timo, p.tlsConfig)
+		c, err = NewConn(p.newClientCodec, addr, st, key, p.timo, p.tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -168,4 +168,44 @@ func (p *ConnPool) RPC(addr net.Addr, stream_type string, version rpc_stream.Mux
 	}
 	clnt_stream.Release()
 	return err
+}
+
+// Call is used to make an RPC call to a remote host
+func (p *ConnPool) Call(addr net.Addr, stream_type string, version rpc_stream.MuxVersion,
+	method string, args interface{}, reply interface{}) error {
+
+	call, clnt_stream := p.Go(addr, stream_type, version, method, args, reply, nil)
+	call = <-call.Done
+	if clnt_stream != nil {
+		clnt_stream.Release()
+	}
+	return call.Error
+}
+
+// Go is used to make an RPC Go call to a remote host
+func (p *ConnPool) Go(addr net.Addr, stream_type string, version rpc_stream.MuxVersion,
+	method string, args interface{}, reply interface{}, done chan *rpc.Call) (*rpc.Call, *Conn) {
+
+	st := strings.ToUpper(stream_type)
+	//	sLog.Printf("Go: pool->%p addr: %s stream: %s method: %s", p, addr, st, method)
+	if reply == nil {
+		return &rpc.Call{ServiceMethod: method, Args: args, Reply: reply, Done: done, Error: ErrNeedReply}, nil
+	}
+	clnt_stream, err := p.getClnt(addr, st)
+	if err != nil {
+		sLog.Printf("rpc error: getClnt()  %v", err)
+		return &rpc.Call{ServiceMethod: method, Args: args, Reply: reply, Done: done, Error: ErrNoClient}, clnt_stream
+	}
+	//	sLog.Printf("@%p -> Go(%s, %s, %d, %s: Args: %#v)", clnt_stream, addr, st, version, method, args)
+	call := clnt_stream.rpc_clnt.Go(method, args, reply, done)
+	if call.Error != nil {
+		p.Shutdown(clnt_stream)
+		sLog.Printf("error on Go():  %v", err)
+		return &rpc.Call{ServiceMethod: method, Args: args, Reply: reply, Done: done, Error: ErrCallFailed}, clnt_stream
+	}
+
+	// caller of this method needs to call this:
+	// clnt_stream.Release()
+
+	return call, clnt_stream
 }

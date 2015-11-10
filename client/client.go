@@ -127,12 +127,18 @@ func (c *Conn) Close() {
 	}
 }
 
-func (c *Conn) Release() {
+func (c *Conn) Release() (closed bool) {
 	refCount := atomic.AddInt32(&c.refCount, -1)
-	if refCount == 0 && atomic.LoadInt32(&c.shutdown) == 1 {
+	shutdown := atomic.LoadInt32(&c.shutdown)
+	if refCount == 0 && shutdown == 1 {
 		sLog.Printf("Release: calling Close() %p %s\n", c, c)
 		c.Close()
+		return true
 	}
+
+	//	sLog.Printf("Release: not calling Close() %p for key %s with refCount: %d shutdown: %d\n",
+	//		c, c.key, refCount, shutdown)
+	return false
 }
 
 func (c *Conn) Hold() {

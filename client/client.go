@@ -136,8 +136,8 @@ func (c *Conn) Release() (closed bool) {
 		return true
 	}
 
-	//	sLog.Printf("Release: not calling Close() %p for key %s with refCount: %d shutdown: %d\n",
-	//		c, c.key, refCount, shutdown)
+	sLog.Printf("Release: not calling Close() %p for key %s with refCount: %d shutdown: %d\n",
+		c, c.key, refCount, shutdown)
 	return false
 }
 

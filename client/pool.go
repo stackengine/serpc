@@ -2,6 +2,7 @@ package rpc_client
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/rpc"
 	"strings"
@@ -139,13 +140,21 @@ func (p *ConnPool) getClnt(addr net.Addr, st string) (*Conn, error) {
 	if c == nil {
 		c, err = NewConn(p.newClientCodec, addr, st, key, p.timo, p.tlsConfig)
 		if err != nil {
-			//	sLog.WarnPrintf("newConn: %p for key %s error: %s", c, key, err)
+			sLog.WarnPrintf("newConn: %p for key %s error: %s", c, key, err)
 			return nil, err
 		}
-		//	sLog.Printf("newConn: %p for key %s", c, key)
+		sLog.Printf("newConn: %p for key %s", c, key)
 		c = p.addConn(c)
 	}
-	//	sLog.Printf("getClnt: %p for key %s  %s<==>%s", c, key, c.net_con.LocalAddr(), c.net_con.RemoteAddr())
+	connStr := "  Conn is nil"
+	if c != nil {
+		if c.net_con != nil {
+			connStr = fmt.Sprintf("%s<==>%s", c.net_con.LocalAddr(), c.net_con.RemoteAddr())
+		} else {
+			connStr = "  connection is nil"
+		}
+	}
+	sLog.Printf("getClnt: %p for key %s  %s", c, key, connStr)
 	return c, nil
 }
 

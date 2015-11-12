@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	netrpc "net/rpc"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,7 +38,7 @@ type Conn struct {
 
 func (c *Conn) String() string {
 	return fmt.Sprintf("Conn:%p type: %s ref: %d key: %s addr: %s shutdown: %d",
-		c, c.stream_type, c.refCount, c.key, c.addr.String(), c.shutdown)
+		c, strings.TrimSuffix(c.stream_type, "\n"), c.refCount, c.key, c.addr.String(), c.shutdown)
 }
 
 func NewConn(newClientCodec NewClientCodec,
@@ -47,7 +48,7 @@ func NewConn(newClientCodec NewClientCodec,
 	timo time.Duration,
 	tlsConfig *tls.Config) (*Conn, error) {
 
-	//	sLog.Printf("New Connection: addr -> %s stream -> '%s' key -> %s", addr, stream_type, key)
+	sLog.Printf("New Connection: addr -> %s stream -> '%s' key -> %s", addr, stream_type, key)
 	// Try to dial the conn
 	conn, err := net.DialTimeout("tcp", addr.String(), timo)
 	if err != nil {

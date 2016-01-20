@@ -97,7 +97,7 @@ func (impl *RPCImpl) Init(tlscfg *ssltls.Cfg, enforce_secure bool, port int, new
 	impl.secure = enforce_secure
 	if impl.rpc_l, err = net.ListenTCP("tcp",
 		&net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: port}); err != nil {
-		sLog.ErrPrintf("rpc: failed to do listen: %v", err)
+		sLog.Errorf("rpc: failed to do listen: %v", err)
 		impl.rpc_svr = nil
 		return err
 	}
@@ -127,7 +127,7 @@ func (impl *RPCImpl) process() {
 			if impl.shutdown {
 				return
 			}
-			sLog.ErrPrintf("rpc: failed to accept RPC conn: %v", err)
+			sLog.Errorf("rpc: failed to accept RPC conn: %v", err)
 			continue
 		}
 
@@ -145,7 +145,7 @@ func (impl *RPCImpl) process() {
 		case rpc_stream.Mux_v2:
 			go impl.MuxRPC(conn, false)
 		default:
-			sLog.ErrPrintf("Unknown MUX Version: %v (%s)",
+			sLog.Errorf("Unknown MUX Version: %v (%s)",
 				sVers[0], conn.RemoteAddr())
 			conn.Close()
 		}
@@ -160,7 +160,7 @@ func (impl *RPCImpl) Start() error {
 	for name, obj := range registered {
 		if obj != nil {
 			if err := impl.rpc_svr.RegisterName(name, obj); err != nil {
-				sLog.ErrPrintf("Failed to RPC_Register: %s - %#v - %s", name, obj, err)
+				sLog.Errorf("Failed to RPC_Register: %s - %#v - %s", name, obj, err)
 			} else {
 				sLog.Printf("Registered: %s - %#v ", name, obj)
 			}
@@ -205,7 +205,7 @@ func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 	switch sType {
 	case rpc_stream.RpcTLS:
 		if impl.inboundTLS == nil {
-			sLog.ErrPrintf("TLS connection attempted, server not configured for TLS (%s)",
+			sLog.Errorf("TLS connection attempted, server not configured for TLS (%s)",
 				conn.RemoteAddr())
 			conn.Close()
 			return
@@ -220,7 +220,7 @@ func (impl *RPCImpl) MuxRPC(conn net.Conn, isTLS bool) {
 	default:
 		serv, err := rpc_stream.Lookup(rpc_stream.Mux_v2, sType)
 		if err != nil {
-			sLog.ErrPrintf("Error on stream (%s) (%s) - %s", sType, conn.RemoteAddr(), err)
+			sLog.Errorf("Error on stream (%s) (%s) - %s", sType, conn.RemoteAddr(), err)
 			conn.Close()
 			return
 		}

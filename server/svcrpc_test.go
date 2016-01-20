@@ -47,7 +47,7 @@ func TestMore(t *testing.T) {
 
 	impl = NewServer()
 
-	assert.Nil(t, impl.Init(nil, false, 1999))
+	// assert.Nil(t, impl.Init(nil, false, 1999))
 	assert.Nil(t, impl.Start())
 
 	dest, err := net.ResolveTCPAddr("tcp", "127.0.0.1:1999")
